@@ -29,8 +29,9 @@ en een A-record voor `tasks` naar de server.
 
 Zonder Docker: `npm ci && npm run build && npm start` (Node 20+).
 
-> Let op: er zit nog geen login op. Zet het achter een login (bijv. Cloudflare Access met
-> Google Workspace, of basic auth in de proxy) voordat het publiek bereikbaar is.
+Beveiliging: zet `APP_PASSWORD` (bijv. `docker run ... -e APP_PASSWORD=...` of in
+`~/sommet-kanban-main.env` op de server). De browser vraagt dan om een wachtwoord; de gebruikersnaam
+maakt niet uit. Dit is tijdelijk tot de Google-login (OAuth) er is. Zet het wachtwoord nooit in git.
 
 ## Google Workspace
 

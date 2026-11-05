@@ -19,7 +19,12 @@ git fetch origin "$BRANCH" && git checkout -q "$SHA"
 
 docker build -t "sommet-kanban:$BRANCH" .
 docker rm -f "$NAME" 2>/dev/null || true
+# Wachtwoord en andere geheimen staan in ~/sommet-kanban-<branch>.env (niet in git), bijv.:
+#   APP_PASSWORD=...
+ENV_FILE="$HOME/sommet-kanban-$BRANCH.env"
+[ -f "$ENV_FILE" ] || { echo "Maak eerst $ENV_FILE aan met APP_PASSWORD=..."; exit 1; }
+
 docker run -d --name "$NAME" --restart unless-stopped \
-  -p "127.0.0.1:$PORT:3001" -e APP_ENV="$ENVNAME" \
+  -p "127.0.0.1:$PORT:3001" -e APP_ENV="$ENVNAME" --env-file "$ENV_FILE" \
   -v "$NAME-data:/data" "sommet-kanban:$BRANCH"
 echo "$NAME draait op $SHA"

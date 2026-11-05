@@ -2,6 +2,7 @@
 // Dev:  draait op :3001, Vite proxyt /api hiernaartoe.
 // Prod: serveert ook de gebouwde frontend uit ./dist.
 import express from 'express';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,6 +37,26 @@ const app = express();
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, env: process.env.APP_ENV || 'development' }));
+
+// Tijdelijke beveiliging tot de Google-login er is: één gedeeld wachtwoord via APP_PASSWORD.
+// De browser vraagt het één keer en onthoudt het. Zonder APP_PASSWORD (lokaal ontwikkelen) staat het uit.
+const PASSWORD = process.env.APP_PASSWORD || '';
+if (PASSWORD) {
+  const expected = crypto.createHash('sha256').update(PASSWORD).digest();
+  app.use((req, res, next) => {
+    const [scheme, encoded] = (req.headers.authorization || '').split(' ');
+    if (scheme === 'Basic' && encoded) {
+      const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+      const given = decoded.slice(decoded.indexOf(':') + 1);
+      const hash = crypto.createHash('sha256').update(given).digest();
+      if (crypto.timingSafeEqual(hash, expected)) return next();
+    }
+    res.set('WWW-Authenticate', 'Basic realm="Sommet Takenbord", charset="UTF-8"');
+    res.status(401).send('Wachtwoord vereist');
+  });
+} else if (process.env.NODE_ENV === 'production') {
+  console.warn('LET OP: APP_PASSWORD is niet gezet. Het takenbord is voor iedereen bereikbaar.');
+}
 
 app.get('/api/tasks', (_req, res) => res.json(tasks));
 
