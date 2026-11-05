@@ -28,8 +28,8 @@ Lokale gegevens staan in `.dev/`.
 
 ## Productie op shared hosting (tasks.sommetmedia.nl)
 
-De hosting heeft geen Node.js, alleen PHP en Apache. Lokaal draait de API in Express (`server.js`),
-online in PHP (`deploy/php/api.php`). Beide hebben dezelfde endpoints, de frontend merkt geen verschil.
+De hosting heeft geen Node.js, alleen PHP en Apache. De API is één PHP-bestand (`deploy/php/api.php`),
+lokaal en online hetzelfde.
 
 Branches: `dev` gaat naar tasks-dev.sommetmedia.nl, `main` naar tasks.sommetmedia.nl
 (zie `.github/workflows/deploy.yml`). `npm run package` maakt `build/`:
