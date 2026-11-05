@@ -7,12 +7,12 @@
 #   CPANEL_SSH_KEY   privé SSH-sleutel (de publieke sleutel staat in cPanel > SSH Access)
 #   CPANEL_SSH_PORT  SSH-poort (vaak 22, bij sommige hosts anders)
 #   CPANEL_SSH_PASSPHRASE  wachtwoord van de sleutel (alleen als die er een heeft)
-#   APP_PASSWORD     wachtwoord van het takenbord (gebruikersnaam: sommet)
+#   APP_PASSWORD     gedeeld wachtwoord; inloggen met eigen e-mailadres (personen staan in Beheer)
 #   ANTHROPIC_API_KEY  Claude API-sleutel voor "taak uit tekst" (optioneel)
 #
 # De server is gewone shared hosting (PHP + Apache, geen Node.js). De build zet:
 #   ~/takenbord/<prod|dev>/public/  document root van het subdomein (frontend + api.php)
-#   ~/takenbord-data/<prod|dev>/    de taken, buiten de deploy-map
+#   ~/takenbord-data/<prod|dev>/    taken, personen/klanten (Beheer) en sessiesleutel, buiten de deploy-map
 name: Deploy
 
 on:
@@ -82,11 +82,8 @@ jobs:
             exit 1
           fi
           ssh-keyscan -p "$PORT" "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
-          REMOTE_HOME=$(ssh -p "$PORT" "$USER@$HOST" 'printf %s "$HOME"')
-          APP_DIR="$REMOTE_HOME/takenbord/$TARGET"
-          # Wachtwoordbestand (gebruiker "sommet") buiten de document root, pad invullen in .htaccess.
-          printf 'sommet:%s\n' "$(openssl passwd -apr1 -stdin <<< "$APP_PASSWORD")" > build/.htpasswd
-          sed -i "s|__HTPASSWD__|$APP_DIR/.htpasswd|" build/public/.htaccess
+          # Gedeelde wachtwoord (alleen de hash) voor het inloggen, buiten de document root.
+          printf '%s' "$APP_PASSWORD" | sha256sum | cut -d' ' -f1 > build/password.sha256
           # Claude-sleutel voor "taak uit tekst" (optioneel), alleen leesbaar voor de eigen gebruiker.
           if [ -n "$ANTHROPIC_API_KEY" ]; then
             (umask 077; printf '%s' "$ANTHROPIC_API_KEY" > build/anthropic.key)
@@ -97,4 +94,4 @@ jobs:
           rsync -az --delete --chmod=D755,F644 \
             --exclude /public/.well-known/ --exclude /public/cgi-bin/ --exclude error_log \
             -e "ssh -p $PORT" build/ "$USER@$HOST:takenbord/$TARGET/"
-          ssh -p "$PORT" "$USER@$HOST" "chmod 600 takenbord/$TARGET/anthropic.key 2>/dev/null; chmod 644 takenbord/$TARGET/.htpasswd; true"
+          ssh -p "$PORT" "$USER@$HOST" "chmod 600 takenbord/$TARGET/anthropic.key takenbord/$TARGET/password.sha256 2>/dev/null; true"

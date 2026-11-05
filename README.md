@@ -4,8 +4,8 @@ Kanbanbord voor het team: klant, Simplicate-urensoort, tijdsduur, toegewezen per
 subtaken, opmerkingen, statusgeschiedenis, interne/externe deadlines en filters.
 
 - Frontend: React + Vite (`src/`)
-- Backend: Express (`server.js`) lokaal, PHP (`deploy/php/api.php`) online; taken in `tasks.json`
-- Klanten, personen en urensoorten: `src/data.js` en `src/workTypes.json`
+- Backend: PHP (`deploy/php/api.php`), lokaal én online; taken in `tasks.json`
+- Personen en klanten: in de app via **Beheer** (startlijst: `src/defaults.json`); urensoorten: `src/workTypes.json`
 
 ## Ontwikkelen (dev)
 
@@ -14,8 +14,17 @@ npm install
 npm run dev
 ```
 
-Frontend op http://localhost:5173, API op :3001. In Claude Code op het web draait dit in de
-cloud-sessie en zie je het in het preview-venster.
+Frontend op http://localhost:5173, PHP-API op :3001 (`php -S`, dezelfde `api.php` als online).
+Lokaal inloggen: een e-mailadres uit `src/defaults.json` met wachtwoord `sommet` (of zet `APP_PASSWORD`).
+Lokale gegevens staan in `.dev/`.
+
+## Inloggen en Beheer
+
+- Iedereen logt in met zijn eigen e-mailadres en het gedeelde wachtwoord (`APP_PASSWORD`). Sessie: 30 dagen.
+- Wie in Beheer op actief staat, kan inloggen. Archiveren blokkeert het inloggen direct.
+- Beheer (personen en klanten) is alleen voor beheerders; standaard Pablo en Kevin.
+- Na 10 mislukte pogingen per kwartier blokkeert de login voor dat IP-adres.
+- Wachtwoord wijzigen: secret `APP_PASSWORD` aanpassen en de deploy draaien. Iedereen moet dan opnieuw inloggen.
 
 ## Productie op shared hosting (tasks.sommetmedia.nl)
 
@@ -31,8 +40,9 @@ Branches: `dev` gaat naar tasks-dev.sommetmedia.nl, `main` naar tasks.sommetmedi
 Op de server:
 
 - `~/takenbord/<prod|dev>/public/`: document root
-- `~/takenbord/<prod|dev>/.htpasswd`: wachtwoord, gemaakt door de workflow uit secret `APP_PASSWORD`
-- `~/takenbord-data/<prod|dev>/tasks.json`: de taken, buiten de deploy-map, dus een deploy overschrijft ze nooit
+- `~/takenbord/<prod|dev>/password.sha256`: hash van het wachtwoord, gemaakt door de workflow uit secret `APP_PASSWORD`
+- `~/takenbord-data/<prod|dev>/`: taken, personen en klanten (Beheer) en de sessiesleutel. Buiten de deploy-map,
+  dus een deploy overschrijft ze nooit
 
 Eenmalig:
 
@@ -44,19 +54,9 @@ Eenmalig:
    eventueel `CPANEL_SSH_PORT`, en `APP_PASSWORD`.
 4. **Taak uit tekst** (optioneel): secret `ANTHROPIC_API_KEY` met een Claude API-sleutel. De deploy zet die in
    `~/takenbord/<prod|dev>/anthropic.key` (buiten de document root); `api.php` roept daarmee Claude aan.
-   Lokaal: `ANTHROPIC_API_KEY=... npm run dev`. Zonder sleutel verdwijnt de knop vanzelf.
+   Zonder sleutel verdwijnt de knop vanzelf.
 
-Inloggen: gebruikersnaam `sommet`, wachtwoord uit `APP_PASSWORD`. Zet het wachtwoord nooit in git.
-Dit is tijdelijk tot de Google-login (OAuth) er is.
-
-### Alternatief: eigen server met Docker
-
-```bash
-docker build -t sommet-kanban .
-docker run -d -p 3001:3001 -e APP_PASSWORD=... -v sommet-kanban-data:/data sommet-kanban
-```
-
-In Docker draait de Express-server; zonder `APP_PASSWORD` staat die open.
+Zet het wachtwoord nooit in git.
 
 ## Google Workspace
 

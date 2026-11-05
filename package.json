@@ -4,13 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k -n api,web -c blue,magenta \"node --watch server.js\" \"vite\"",
+    "dev": "node deploy/seeds.mjs .dev && concurrently -k -n api,web -c blue,magenta \"TAKENBORD_APP_DIR=.dev TAKENBORD_DATA_DIR=.dev/data TAKENBORD_ENV=dev APP_PASSWORD=${APP_PASSWORD:-sommet} php -S 127.0.0.1:3001 deploy/php/router.php\" \"vite\"",
     "build": "vite build",
-    "start": "NODE_ENV=production node server.js",
     "package": "vite build && node deploy/package.mjs"
-  },
-  "dependencies": {
-    "express": "4.21.2"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "4.3.4",

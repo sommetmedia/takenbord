@@ -1,14 +1,4 @@
-# Tijdelijke beveiliging tot de Google-login er is. De workflow vult het pad naar .htpasswd in.
-# Gebruikersnaam: sommet. /.well-known blijft open voor de SSL-verlenging (AutoSSL).
-AuthType Basic
-AuthName "Sommet Media - Takenbord"
-AuthUserFile "__HTPASSWD__"
-SetEnvIf Request_URI "^/\.well-known/" TAKENBORD_OPEN
-<RequireAny>
-  Require env TAKENBORD_OPEN
-  Require valid-user
-</RequireAny>
-
+# Inloggen regelt api.php (eigen e-mailadres + wachtwoord). De frontend zelf bevat geen gegevens.
 Options -Indexes
 DirectoryIndex index.html
 

@@ -1,0 +1,186 @@
+{
+  "people": [
+    {
+      "name": "Pablo",
+      "email": "pablo@sommetmedia.nl",
+      "admin": true,
+      "active": true
+    },
+    {
+      "name": "Kevin",
+      "email": "kevin@sommetmedia.nl",
+      "admin": true,
+      "active": true
+    },
+    {
+      "name": "Koen",
+      "email": "koen@sommetmedia.nl",
+      "admin": false,
+      "active": true
+    },
+    {
+      "name": "Yade",
+      "email": "yade@sommetmedia.nl",
+      "admin": false,
+      "active": true
+    },
+    {
+      "name": "Richelle",
+      "email": "richelle@sommetmedia.nl",
+      "admin": false,
+      "active": true
+    }
+  ],
+  "clients": [
+    {
+      "name": "24 Survival",
+      "site": "24survival.com",
+      "active": true
+    },
+    {
+      "name": "3dCASE architectenburo",
+      "site": "3dcase-architectenburo.nl",
+      "active": true
+    },
+    {
+      "name": "Barista Bandits",
+      "site": "baristabandits.nl",
+      "active": true
+    },
+    {
+      "name": "Bengelmedia",
+      "site": "proefpersoon.nl",
+      "active": true
+    },
+    {
+      "name": "Capital Value",
+      "site": "capitalvalue.nl",
+      "active": true
+    },
+    {
+      "name": "Coachkwadrant",
+      "site": "coachkwadrant.nl",
+      "active": true
+    },
+    {
+      "name": "Daeli Productions",
+      "site": "daeliproductions.com",
+      "active": true
+    },
+    {
+      "name": "De Kracht van de Verschillen",
+      "site": "dekrachtvandeverschillen.nl",
+      "active": true
+    },
+    {
+      "name": "De Nieuwe Ruimte",
+      "site": "denieuweruimte.com",
+      "active": true
+    },
+    {
+      "name": "Dozensite",
+      "site": "dozensite.nl",
+      "active": true
+    },
+    {
+      "name": "Greendex & Verdi Tuinen",
+      "site": "greendex.nl + verdituinen.nl",
+      "active": true
+    },
+    {
+      "name": "Holland Recycling",
+      "site": "hollandrecycling.nl",
+      "active": true
+    },
+    {
+      "name": "HR Installatietechniek",
+      "site": "hrinstallatietechniek.com",
+      "active": true
+    },
+    {
+      "name": "HR Lekdetectie",
+      "site": "hrlekdetectie.nl",
+      "active": true
+    },
+    {
+      "name": "KDV Jansen en Jansen",
+      "site": "kdvjansenenjansen.nl",
+      "active": true
+    },
+    {
+      "name": "Kids Lodge B.V.",
+      "site": "kidslodge.nl",
+      "active": true
+    },
+    {
+      "name": "NKBV (bergsportreizen.nl)",
+      "site": "bergsportreizen.nl",
+      "active": true
+    },
+    {
+      "name": "NKBV (nkbv.nl)",
+      "site": "nkbv.nl",
+      "active": true
+    },
+    {
+      "name": "NL Dance",
+      "site": "nldance.nl",
+      "active": true
+    },
+    {
+      "name": "NL Loodgieters",
+      "site": "nlloodgieters.nl",
+      "active": true
+    },
+    {
+      "name": "Orange Plastics B.V.",
+      "site": "orangeplastics.com",
+      "active": true
+    },
+    {
+      "name": "Qbig Packaging B.V.",
+      "site": "qbigpackaging.com",
+      "active": true
+    },
+    {
+      "name": "Qoets.nl B.V.",
+      "site": "qoets.nl",
+      "active": true
+    },
+    {
+      "name": "Schuldhulp Utrechtse Heuvelrug",
+      "site": "schuldhulputrechtseheuvelrug.nl",
+      "active": true
+    },
+    {
+      "name": "Smart Work Lagrouw",
+      "site": "swlcoaching.nl",
+      "active": true
+    },
+    {
+      "name": "Sommet Media",
+      "site": "sommetmedia.nl",
+      "active": true
+    },
+    {
+      "name": "Sommet Media (eiwitpoederaanbiedingen.nl)",
+      "site": "eiwitpoederaanbiedingen.nl",
+      "active": true
+    },
+    {
+      "name": "Start Detailing",
+      "site": "startdetailing.nl",
+      "active": true
+    },
+    {
+      "name": "Visionplay Dutch Art Reproductions",
+      "site": "dutch-art-reproductions.nl",
+      "active": true
+    },
+    {
+      "name": "XTNT",
+      "site": "xtnt.nl",
+      "active": true
+    }
+  ]
+}

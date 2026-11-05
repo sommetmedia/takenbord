@@ -54,7 +54,7 @@ const clean = (s) => s.toLowerCase().replace(/\(.*?\)/g, ' ').replace(SUFFIX, ''
 const siteRoot = (site) => site.split(/\s*\+\s*/).map((s) => s.replace(/^www\./, '').split('.')[0].toLowerCase());
 
 // Woorden die bij precies één klant horen, bruikbaar om die klant in vrije tekst te herkennen.
-const uniqueWords = (() => {
+const uniqueWordsFor = () => {
   const count = {};
   const per = clients.map((c) => {
     const words = new Set(clean(c.name).split(' ').filter((w) => w.length >= 4));
@@ -63,7 +63,7 @@ const uniqueWords = (() => {
   });
   const generic = new Set(['media', 'productions', 'tuinen', 'reproductions', 'dutch', 'work', 'smart', 'start', 'lodge', 'value', 'kracht', 'verschillen', 'nieuwe', 'ruimte', 'jansen']);
   return per.map((words) => [...words].filter((w) => count[w] === 1 && !generic.has(w)));
-})();
+};
 
 export function matchClient(value) {
   if (!value || typeof value !== 'string') return '';
@@ -85,6 +85,7 @@ export function matchClient(value) {
 export function findClientInText(text) {
   const t = ` ${text.toLowerCase().replace(/[^a-z0-9.]+/g, ' ')} `;
   const flat = text.toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const uniqueWords = uniqueWordsFor();
   const scores = clients.map((c, i) => {
     let score = 0;
     if (c.site.split(/\s*\+\s*/).some((s) => t.includes(s.toLowerCase()))) score += 3;

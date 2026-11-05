@@ -17,6 +17,47 @@ async function useCap(name) {
   try { return window.claude?.use ? await window.claude.use(name) : null; } catch { return null; }
 }
 
+const jsonPost = (url, body) => fetch(url, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body ?? {}),
+});
+const isJson = (r) => (r.headers.get('content-type') || '').includes('json');
+let parseEnabled = false;
+
+// Welke omgeving is dit? 'artifact' (claude.ai), 'server' (ingelogd), 'login' (server, niet ingelogd) of 'local'.
+export async function session() {
+  if (await useCap('db')) return { kind: 'artifact' };
+  try {
+    const r = await fetch('/api/me');
+    if (r.status === 401 && isJson(r)) return { kind: 'login' };
+    if (!r.ok || !isJson(r)) return { kind: 'local' };
+    const me = await r.json();
+    parseEnabled = !!me.parse;
+    const s = await fetch('/api/settings');
+    return { kind: 'server', user: me.user, settings: s.ok ? await s.json() : null };
+  } catch {
+    return { kind: 'local' };
+  }
+}
+
+export async function login(email, password) {
+  const r = await jsonPost('/api/login', { email, password });
+  if (r.ok) return null;
+  return r.status === 429 ? 'Te veel pogingen. Probeer het over een kwartier opnieuw.'
+    : r.status === 401 ? 'Dit e-mailadres of wachtwoord klopt niet.'
+    : 'Inloggen lukt nu niet. Probeer het zo opnieuw.';
+}
+
+export async function logout() {
+  await jsonPost('/api/logout');
+}
+
+export async function saveSettings(settings) {
+  const r = await jsonPost('/api/settings', settings);
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.error || 'Opslaan is niet gelukt.');
+  return body;
+}
+
 // Roept onTasks(tasks) aan bij elke wijziging en onStatus({mode, stale, error}) bij statuswijziging.
 export async function connect(seed, onTasks, onStatus) {
   db = await useCap('db');
@@ -36,6 +77,7 @@ export async function connect(seed, onTasks, onStatus) {
   const load = async () => {
     try {
       const r = await fetch('/api/tasks');
+      if (r.status === 401) { window.location.reload(); return; }
       if (!r.ok || !(r.headers.get('content-type') || '').includes('json')) throw new Error();
       mode = 'server';
       onTasks(await r.json());
@@ -53,16 +95,14 @@ export async function connect(seed, onTasks, onStatus) {
 export async function saveTask(task, all) {
   if (mode === 'db') return db.collection('tasks').doc(task.id).set(JSON.parse(JSON.stringify(task)));
   if (mode === 'local') return lsWrite(all);
-  const r = await fetch(`/api/tasks/${encodeURIComponent(task.id)}`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(task),
-  });
+  const r = await jsonPost(`/api/tasks/${encodeURIComponent(task.id)}`, task);
   if (!r.ok) throw Object.assign(new Error(`HTTP ${r.status}`), { code: `http_${r.status}` });
 }
 
 export async function deleteTask(id, all) {
   if (mode === 'db') return db.collection('tasks').doc(id).delete();
   if (mode === 'local') return lsWrite(all);
-  const r = await fetch(`/api/tasks/${encodeURIComponent(id)}/delete`, { method: 'POST' });
+  const r = await jsonPost(`/api/tasks/${encodeURIComponent(id)}/delete`);
   if (!r.ok) throw Object.assign(new Error(`HTTP ${r.status}`), { code: `http_${r.status}` });
 }
 
@@ -80,14 +120,9 @@ export async function viewerName() {
 export async function getParser() {
   const sample = await useCap('sample');
   if (sample) return (prompt) => sample.json(prompt, { modelTier: 'default' });
-  try {
-    const r = await fetch('/api/health');
-    if (!r.ok || !(await r.json()).parse) return null;
-  } catch { return null; }
+  if (!parseEnabled) return null;
   return async (prompt) => {
-    const r = await fetch('/api/parse', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }),
-    });
+    const r = await jsonPost('/api/parse', { prompt });
     const body = await r.json().catch(() => ({}));
     if (!r.ok) throw { code: body.error || `http_${r.status}` };
     return body;
