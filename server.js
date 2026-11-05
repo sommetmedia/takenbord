@@ -60,20 +60,24 @@ if (PASSWORD) {
 
 app.get('/api/tasks', (_req, res) => res.json(tasks));
 
-app.put('/api/tasks/:id', (req, res) => {
+// POST naast PUT/DELETE: sommige shared hosts blokkeren PUT en DELETE.
+const putTask = (req, res) => {
   const task = { ...req.body, id: req.params.id, updatedAt: new Date().toISOString() };
   const i = tasks.findIndex((t) => t.id === task.id);
   if (i === -1) tasks.push(task);
   else tasks[i] = task;
   save(tasks);
   res.json(task);
-});
-
-app.delete('/api/tasks/:id', (req, res) => {
+};
+const deleteTask = (req, res) => {
   tasks = tasks.filter((t) => t.id !== req.params.id);
   save(tasks);
   res.status(204).end();
-});
+};
+app.put('/api/tasks/:id', putTask);
+app.post('/api/tasks/:id', putTask);
+app.delete('/api/tasks/:id', deleteTask);
+app.post('/api/tasks/:id/delete', deleteTask);
 
 if (process.env.NODE_ENV === 'production') {
   const dist = path.join(ROOT, 'dist');

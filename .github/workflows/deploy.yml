@@ -1,5 +1,5 @@
-# Push naar `dev`  -> tasks-dev.sommetmedia.nl  (map ~/takenbord/dev  op de cPanel-server)
-# Push naar `main` -> tasks.sommetmedia.nl      (map ~/takenbord/prod op de cPanel-server)
+# Push naar `dev`  -> tasks-dev.sommetmedia.nl  (map ~/takenbord/dev  op de server)
+# Push naar `main` -> tasks.sommetmedia.nl      (map ~/takenbord/prod op de server)
 #
 # Secrets (GitHub > Settings > Secrets and variables > Actions):
 #   CPANEL_HOST      45.152.249.10
@@ -7,6 +7,11 @@
 #   CPANEL_SSH_KEY   privé SSH-sleutel (de publieke sleutel staat in cPanel > SSH Access)
 #   CPANEL_SSH_PORT  SSH-poort (vaak 22, bij sommige hosts anders)
 #   CPANEL_SSH_PASSPHRASE  wachtwoord van de sleutel (alleen als die er een heeft)
+#   APP_PASSWORD     wachtwoord van het takenbord (gebruikersnaam: sommet)
+#
+# De server is gewone shared hosting (PHP + Apache, geen Node.js). De build zet:
+#   ~/takenbord/<prod|dev>/public/  document root van het subdomein (frontend + api.php)
+#   ~/takenbord-data/<prod|dev>/    de taken, buiten de deploy-map
 name: Deploy
 
 on:
@@ -62,14 +67,25 @@ jobs:
             exit 1
           fi
 
-      - name: Upload naar cPanel en herstart
+      - name: Upload naar de server
         if: env.READY == 'true'
         env:
           HOST: ${{ secrets.CPANEL_HOST }}
           USER: ${{ secrets.CPANEL_USER }}
           PORT: ${{ secrets.CPANEL_SSH_PORT || '22' }}
+          APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
         run: |
+          if [ -z "$APP_PASSWORD" ]; then
+            echo "::error::Secret APP_PASSWORD ontbreekt. Zonder wachtwoord wordt het bord niet online gezet."
+            exit 1
+          fi
           ssh-keyscan -p "$PORT" "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
-          ssh -p "$PORT" "$USER@$HOST" "mkdir -p takenbord/$TARGET"
-          rsync -az --delete --exclude tmp/ --exclude .htaccess -e "ssh -p $PORT" build/ "$USER@$HOST:takenbord/$TARGET/"
-          ssh -p "$PORT" "$USER@$HOST" "mkdir -p takenbord/$TARGET/tmp && touch takenbord/$TARGET/tmp/restart.txt"
+          REMOTE_HOME=$(ssh -p "$PORT" "$USER@$HOST" 'printf %s "$HOME"')
+          APP_DIR="$REMOTE_HOME/takenbord/$TARGET"
+          # Wachtwoordbestand (gebruiker "sommet") buiten de document root, pad invullen in .htaccess.
+          printf 'sommet:%s\n' "$(openssl passwd -apr1 -stdin <<< "$APP_PASSWORD")" > build/.htpasswd
+          sed -i "s|__HTPASSWD__|$APP_DIR/.htpasswd|" build/public/.htaccess
+          ssh -p "$PORT" "$USER@$HOST" "mkdir -p takenbord/$TARGET takenbord-data/$TARGET"
+          rsync -az --delete --chmod=D755,F644 \
+            --exclude /public/.well-known/ --exclude /public/cgi-bin/ --exclude error_log \
+            -e "ssh -p $PORT" build/ "$USER@$HOST:takenbord/$TARGET/"

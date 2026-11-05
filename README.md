@@ -4,7 +4,7 @@ Kanbanbord voor het team: klant, Simplicate-urensoort, tijdsduur, toegewezen per
 subtaken, opmerkingen, statusgeschiedenis, interne/externe deadlines en filters.
 
 - Frontend: React + Vite (`src/`)
-- Backend: Express (`server.js`), slaat taken op in `DATA_DIR/tasks.json`
+- Backend: Express (`server.js`) lokaal, PHP (`deploy/php/api.php`) online; taken in `tasks.json`
 - Klanten, personen en urensoorten: `src/data.js` en `src/workTypes.json`
 
 ## Ontwikkelen (dev)
@@ -17,38 +17,43 @@ npm run dev
 Frontend op http://localhost:5173, API op :3001. In Claude Code op het web draait dit in de
 cloud-sessie en zie je het in het preview-venster.
 
-## Productie op cPanel (tasks.sommetmedia.nl)
+## Productie op shared hosting (tasks.sommetmedia.nl)
+
+De hosting heeft geen Node.js, alleen PHP en Apache. Lokaal draait de API in Express (`server.js`),
+online in PHP (`deploy/php/api.php`). Beide hebben dezelfde endpoints, de frontend merkt geen verschil.
 
 Branches: `dev` gaat naar tasks-dev.sommetmedia.nl, `main` naar tasks.sommetmedia.nl
-(zie `.github/workflows/deploy.yml`). `npm run package` maakt `build/` met `app.cjs` (server met
-alles erin), `dist/` (frontend) en een kale `package.json`. Er is op de server geen `npm install` nodig.
+(zie `.github/workflows/deploy.yml`). `npm run package` maakt `build/`:
 
-Eenmalig in cPanel, per omgeving (prod en dev):
+- `build/public/`: frontend, `api.php` en `.htaccess`. Dit is de document root van het subdomein.
+- `build/seed.json`: starttaken voor een lege database.
 
-1. **Domains**: subdomein `tasks.sommetmedia.nl` (en `tasks-dev.sommetmedia.nl`).
-2. **Setup Node.js App** > Create Application:
-   - Node.js version: 20 of hoger
-   - Application mode: Production
-   - Application root: `takenbord/prod` (dev: `takenbord/dev`)
-   - Application URL: `tasks.sommetmedia.nl` (dev: `tasks-dev.sommetmedia.nl`)
-   - Application startup file: `app.cjs`
-   - Environment variables: `APP_PASSWORD` = het wachtwoord, `DATA_DIR` = `/home/<gebruiker>/takenbord-data/prod`
-     (dev: `.../dev`), `APP_ENV` = `production` of `staging`
-3. **SSL/TLS Status**: AutoSSL draaien voor beide subdomeinen.
-4. **SSH Access**: SSH-sleutel aanmaken of importeren en autoriseren, en de privé-sleutel als
-   secret `CPANEL_SSH_KEY` in GitHub zetten (plus `CPANEL_HOST`, `CPANEL_USER`, `CPANEL_SSH_PORT`). cPanel dwingt een wachtwoord op de sleutel af: zet dat in `CPANEL_SSH_PASSPHRASE`.
+Op de server:
 
-De taken staan in `DATA_DIR`, buiten de app-map, zodat een deploy ze nooit overschrijft.
+- `~/takenbord/<prod|dev>/public/`: document root
+- `~/takenbord/<prod|dev>/.htpasswd`: wachtwoord, gemaakt door de workflow uit secret `APP_PASSWORD`
+- `~/takenbord-data/<prod|dev>/tasks.json`: de taken, buiten de deploy-map, dus een deploy overschrijft ze nooit
 
-### Zonder cPanel (Docker)
+Eenmalig:
+
+1. **cPanel > Domains**: document root van `tasks.sommetmedia.nl` op `takenbord/prod/public` zetten,
+   en van `tasks-dev.sommetmedia.nl` op `takenbord/dev/public`.
+2. **SSL/TLS Status**: AutoSSL voor beide subdomeinen.
+3. **SSH Access**: sleutel aanmaken en autoriseren. GitHub-secrets: `CPANEL_HOST`, `CPANEL_USER`,
+   `CPANEL_SSH_KEY`, `CPANEL_SSH_PASSPHRASE` (cPanel dwingt een wachtwoord op de sleutel af),
+   eventueel `CPANEL_SSH_PORT`, en `APP_PASSWORD`.
+
+Inloggen: gebruikersnaam `sommet`, wachtwoord uit `APP_PASSWORD`. Zet het wachtwoord nooit in git.
+Dit is tijdelijk tot de Google-login (OAuth) er is.
+
+### Alternatief: eigen server met Docker
 
 ```bash
 docker build -t sommet-kanban .
 docker run -d -p 3001:3001 -e APP_PASSWORD=... -v sommet-kanban-data:/data sommet-kanban
 ```
 
-Beveiliging: zonder `APP_PASSWORD` staat de app open. Zet het wachtwoord nooit in git.
-Dit is tijdelijk tot de Google-login (OAuth) er is.
+In Docker draait de Express-server; zonder `APP_PASSWORD` staat die open.
 
 ## Google Workspace
 

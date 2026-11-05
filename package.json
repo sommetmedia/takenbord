@@ -7,8 +7,7 @@
     "dev": "concurrently -k -n api,web -c blue,magenta \"node --watch server.js\" \"vite\"",
     "build": "vite build",
     "start": "NODE_ENV=production node server.js",
-    "build:server": "esbuild server.js --bundle --platform=node --target=node18 --format=cjs --outfile=build/app.cjs --log-level=warning",
-    "package": "npm run build && npm run build:server && rm -rf build/dist && cp -r dist build/dist && node deploy/write-package.mjs"
+    "package": "vite build && node deploy/package.mjs"
   },
   "dependencies": {
     "express": "4.21.2"
@@ -18,7 +17,6 @@
     "concurrently": "9.1.2",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "vite": "6.0.7",
-    "esbuild": "0.24.2"
+    "vite": "6.0.7"
   }
 }

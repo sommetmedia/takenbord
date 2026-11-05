@@ -53,15 +53,17 @@ export async function connect(seed, onTasks, onStatus) {
 export async function saveTask(task, all) {
   if (mode === 'db') return db.collection('tasks').doc(task.id).set(JSON.parse(JSON.stringify(task)));
   if (mode === 'local') return lsWrite(all);
-  await fetch(`/api/tasks/${encodeURIComponent(task.id)}`, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(task),
+  const r = await fetch(`/api/tasks/${encodeURIComponent(task.id)}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(task),
   });
+  if (!r.ok) throw Object.assign(new Error(`HTTP ${r.status}`), { code: `http_${r.status}` });
 }
 
 export async function deleteTask(id, all) {
   if (mode === 'db') return db.collection('tasks').doc(id).delete();
   if (mode === 'local') return lsWrite(all);
-  await fetch(`/api/tasks/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  const r = await fetch(`/api/tasks/${encodeURIComponent(id)}/delete`, { method: 'POST' });
+  if (!r.ok) throw Object.assign(new Error(`HTTP ${r.status}`), { code: `http_${r.status}` });
 }
 
 export const getMode = () => mode;

@@ -1,0 +1,32 @@
+# Tijdelijke beveiliging tot de Google-login er is. De workflow vult het pad naar .htpasswd in.
+# Gebruikersnaam: sommet. /.well-known blijft open voor de SSL-verlenging (AutoSSL).
+AuthType Basic
+AuthName "Sommet Takenbord"
+AuthUserFile "__HTPASSWD__"
+SetEnvIf Request_URI "^/\.well-known/" TAKENBORD_OPEN
+<RequireAny>
+  Require env TAKENBORD_OPEN
+  Require valid-user
+</RequireAny>
+
+Options -Indexes
+DirectoryIndex index.html
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # Altijd via https, anders gaat het wachtwoord onversleuteld over de lijn.
+  RewriteCond %{REQUEST_URI} !^/\.well-known/
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+  RewriteRule ^api/(.*)$ api.php?path=$1 [QSA,L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
