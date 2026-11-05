@@ -70,5 +70,6 @@ jobs:
           PORT: ${{ secrets.CPANEL_SSH_PORT || '22' }}
         run: |
           ssh-keyscan -p "$PORT" "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -p "$PORT" "$USER@$HOST" "mkdir -p takenbord/$TARGET"
           rsync -az --delete --exclude tmp/ --exclude .htaccess -e "ssh -p $PORT" build/ "$USER@$HOST:takenbord/$TARGET/"
           ssh -p "$PORT" "$USER@$HOST" "mkdir -p takenbord/$TARGET/tmp && touch takenbord/$TARGET/tmp/restart.txt"
