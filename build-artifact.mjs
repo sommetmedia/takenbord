@@ -12,7 +12,7 @@ const files = (Array.isArray(out) ? out[0] : out).output;
 const js = files.filter((f) => f.type === 'chunk').map((f) => f.code).join('\n').replaceAll('</script', '<\\/script');
 const css = files.filter((f) => f.fileName.endsWith('.css')).map((f) => f.source).join('\n');
 
-const html = `<title>Sommet Takenbord</title>
+const html = `<title>Sommet Media - Takenbord</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
 <style>${css}</style>
