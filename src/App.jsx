@@ -374,6 +374,7 @@ function PasteDialog({ initial, me, parser, onClose, onResult }) {
       setError(
         e?.code === 'not_granted' ? 'Je hebt Claude geen toestemming gegeven. Maak de taak met de hand aan.'
           : e?.code === 'rate_limited' ? 'Even te veel verzoeken. Probeer het over een minuut opnieuw.'
+          : e?.code === 'api_error' || e?.code === 'unreachable' ? 'Claude is nu niet bereikbaar. Probeer het zo opnieuw of maak de taak met de hand aan.'
           : 'Claude kon hier geen taak van maken. Pas de tekst aan of maak de taak met de hand aan.');
     }
   }

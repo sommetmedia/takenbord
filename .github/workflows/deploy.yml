@@ -8,6 +8,7 @@
 #   CPANEL_SSH_PORT  SSH-poort (vaak 22, bij sommige hosts anders)
 #   CPANEL_SSH_PASSPHRASE  wachtwoord van de sleutel (alleen als die er een heeft)
 #   APP_PASSWORD     wachtwoord van het takenbord (gebruikersnaam: sommet)
+#   ANTHROPIC_API_KEY  Claude API-sleutel voor "taak uit tekst" (optioneel)
 #
 # De server is gewone shared hosting (PHP + Apache, geen Node.js). De build zet:
 #   ~/takenbord/<prod|dev>/public/  document root van het subdomein (frontend + api.php)
@@ -74,6 +75,7 @@ jobs:
           USER: ${{ secrets.CPANEL_USER }}
           PORT: ${{ secrets.CPANEL_SSH_PORT || '22' }}
           APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           if [ -z "$APP_PASSWORD" ]; then
             echo "::error::Secret APP_PASSWORD ontbreekt. Zonder wachtwoord wordt het bord niet online gezet."
@@ -85,7 +87,14 @@ jobs:
           # Wachtwoordbestand (gebruiker "sommet") buiten de document root, pad invullen in .htaccess.
           printf 'sommet:%s\n' "$(openssl passwd -apr1 -stdin <<< "$APP_PASSWORD")" > build/.htpasswd
           sed -i "s|__HTPASSWD__|$APP_DIR/.htpasswd|" build/public/.htaccess
+          # Claude-sleutel voor "taak uit tekst" (optioneel), alleen leesbaar voor de eigen gebruiker.
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            (umask 077; printf '%s' "$ANTHROPIC_API_KEY" > build/anthropic.key)
+          else
+            echo "::notice::Secret ANTHROPIC_API_KEY ontbreekt: 'taak uit tekst' staat uit."
+          fi
           ssh -p "$PORT" "$USER@$HOST" "mkdir -p takenbord/$TARGET takenbord-data/$TARGET"
           rsync -az --delete --chmod=D755,F644 \
             --exclude /public/.well-known/ --exclude /public/cgi-bin/ --exclude error_log \
             -e "ssh -p $PORT" build/ "$USER@$HOST:takenbord/$TARGET/"
+          ssh -p "$PORT" "$USER@$HOST" "chmod 600 takenbord/$TARGET/anthropic.key 2>/dev/null; chmod 644 takenbord/$TARGET/.htpasswd; true"

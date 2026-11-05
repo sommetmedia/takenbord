@@ -76,8 +76,20 @@ export async function viewerName() {
 }
 
 // Tekst (mail, chat) omzetten naar een taak met Claude.
+// In claude.ai via de sample-capability, op de eigen server via /api/parse (sleutel staat op de server).
 export async function getParser() {
   const sample = await useCap('sample');
-  if (!sample) return null;
-  return (prompt) => sample.json(prompt, { modelTier: 'default' });
+  if (sample) return (prompt) => sample.json(prompt, { modelTier: 'default' });
+  try {
+    const r = await fetch('/api/health');
+    if (!r.ok || !(await r.json()).parse) return null;
+  } catch { return null; }
+  return async (prompt) => {
+    const r = await fetch('/api/parse', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }),
+    });
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) throw { code: body.error || `http_${r.status}` };
+    return body;
+  };
 }

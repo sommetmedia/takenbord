@@ -36,7 +36,8 @@ let tasks = load();
 const app = express();
 app.use(express.json({ limit: '1mb' }));
 
-app.get('/api/health', (_req, res) => res.json({ ok: true, env: process.env.APP_ENV || 'development' }));
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
+app.get('/api/health', (_req, res) => res.json({ ok: true, env: process.env.APP_ENV || 'development', parse: !!ANTHROPIC_API_KEY }));
 
 // Tijdelijke beveiliging tot de Google-login er is: één gedeeld wachtwoord via APP_PASSWORD.
 // De browser vraagt het één keer en onthoudt het. Zonder APP_PASSWORD (lokaal ontwikkelen) staat het uit.
@@ -59,6 +60,40 @@ if (PASSWORD) {
 }
 
 app.get('/api/tasks', (_req, res) => res.json(tasks));
+
+// Taak uit tekst, zelfde gedrag als /api/parse in deploy/php/api.php.
+app.post('/api/parse', async (req, res) => {
+  if (!ANTHROPIC_API_KEY) return res.status(503).json({ error: 'not_configured' });
+  const prompt = typeof req.body?.prompt === 'string' ? req.body.prompt : '';
+  if (!prompt || prompt.length > 200000) return res.status(400).json({ error: 'bad_prompt' });
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2026-10-21',
+        'anthropic-beta': 'server-side-fallback-2026-07-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-5-5',
+        max_tokens: 8000,
+        output_config: { effort: 'low' },
+        fallbacks: 'default',
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    if (r.status === 429 || r.status === 529) return res.status(429).json({ error: 'rate_limited' });
+    const data = await r.json();
+    if (!r.ok) { console.error('parse: Claude API', r.status, JSON.stringify(data).slice(0, 300)); return res.status(502).json({ error: 'api_error' }); }
+    if (data.stop_reason === 'refusal') return res.status(422).json({ error: 'refused' });
+    const text = (data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
+    const json = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
+    res.json(JSON.parse(json));
+  } catch (e) {
+    res.status(422).json({ error: 'no_json' });
+  }
+});
 
 // POST naast PUT/DELETE: sommige shared hosts blokkeren PUT en DELETE.
 const putTask = (req, res) => {

@@ -42,6 +42,9 @@ Eenmalig:
 3. **SSH Access**: sleutel aanmaken en autoriseren. GitHub-secrets: `CPANEL_HOST`, `CPANEL_USER`,
    `CPANEL_SSH_KEY`, `CPANEL_SSH_PASSPHRASE` (cPanel dwingt een wachtwoord op de sleutel af),
    eventueel `CPANEL_SSH_PORT`, en `APP_PASSWORD`.
+4. **Taak uit tekst** (optioneel): secret `ANTHROPIC_API_KEY` met een Claude API-sleutel. De deploy zet die in
+   `~/takenbord/<prod|dev>/anthropic.key` (buiten de document root); `api.php` roept daarmee Claude aan.
+   Lokaal: `ANTHROPIC_API_KEY=... npm run dev`. Zonder sleutel verdwijnt de knop vanzelf.
 
 Inloggen: gebruikersnaam `sommet`, wachtwoord uit `APP_PASSWORD`. Zet het wachtwoord nooit in git.
 Dit is tijdelijk tot de Google-login (OAuth) er is.
