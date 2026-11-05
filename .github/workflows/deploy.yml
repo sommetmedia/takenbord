@@ -1,0 +1,38 @@
+# Elke push naar `dev` gaat naar tasks-dev.sommetmedia.nl, elke push naar `main` naar tasks.sommetmedia.nl.
+# Nodig in GitHub > Settings > Secrets and variables > Actions: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY.
+name: Deploy
+
+on:
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          BRANCH: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: BRANCH,SHA
+          script: bash ~/sommet-kanban-deploy.sh "$BRANCH" "$SHA"

@@ -220,3 +220,21 @@ input[type='checkbox'] { width: 16px; height: 16px; padding: 0; accent-color: va
   .modal-side { border-left: 0; border-top: 1px solid var(--line); }
   .grid2 { grid-template-columns: 1fr; }
 }
+
+/* Toevoegingen: plakken, lege staat, meldingen */
+:root { color-scheme: light; }
+.banner.error { background: #fde8e8; color: var(--red); }
+.banner.inline { border-radius: 8px; margin-top: 10px; padding: 8px 12px; }
+.empty { margin: 24px 24px 0; padding: 20px 24px; background: var(--white); border: 1px dashed var(--line-strong); border-radius: 12px; max-width: 620px; }
+.empty h2 { font-size: 16px; margin-bottom: 4px; }
+.empty p { margin: 0; color: var(--muted); }
+.modal.paste { width: min(680px, 100%); }
+.paste-title { font-size: 18px; flex: 1; }
+.paste-body { padding: 16px 20px; overflow-y: auto; }
+.paste-body p { margin: 0 0 12px; font-size: 13px; }
+.btn.danger.solid { background: var(--red); border-color: var(--red); color: #fff; }
+.confirm-text { align-self: center; font-size: 13px; color: var(--red); font-weight: 600; }
+.modal-foot { flex-wrap: wrap; align-items: center; }
+.source { margin-bottom: 14px; font-size: 12px; }
+.source summary { cursor: pointer; color: var(--muted); font-weight: 600; }
+.source pre { white-space: pre-wrap; font: 12px/1.5 'Poppins', sans-serif; background: var(--white); border: 1px solid var(--line); border-radius: 8px; padding: 10px; max-height: 220px; overflow: auto; }

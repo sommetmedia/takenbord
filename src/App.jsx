@@ -3,7 +3,8 @@ import {
   clients, columns, deadlineOptions, durationOptions, people, statusTitle, workGroup, workTypes,
 } from './data.js';
 import { seedTasks } from './seed.js';
-import { deleteTask, fetchTasks, isOffline, saveTask } from './api.js';
+import { connect, deleteTask, getMode, getParser, saveTask, viewerName } from './api.js';
+import { buildPrompt, normalize } from './parse.js';
 
 const uid = (p) => `${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 const emptyFilters = { people: [], client: '', workType: '', internal: [], external: [], duration: [] };
@@ -63,6 +64,10 @@ export default function App() {
   const [dragId, setDragId] = useState(null);
   const [overCol, setOverCol] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [status, setStatus] = useState({ mode: 'loading' });
+  const [saveError, setSaveError] = useState('');
+  const [parser, setParser] = useState(null);
+  const [pasteText, setPasteText] = useState(null);
   const [me, setMe] = useState(() => {
     try { return localStorage.getItem('sommet-me') || 'Pablo'; } catch { return 'Pablo'; }
   });
@@ -70,11 +75,31 @@ export default function App() {
   tasksRef.current = tasks;
 
   useEffect(() => {
-    const load = () => fetchTasks(seedTasks).then((t) => { setTasks(t); setLoaded(true); });
-    load();
-    const iv = setInterval(() => { if (!document.hidden && !isOffline()) load(); }, 15000);
-    return () => clearInterval(iv);
+    let stop = () => {};
+    let alive = true;
+    connect(seedTasks, (t) => { setTasks(t); setLoaded(true); }, setStatus).then((s) => {
+      if (alive) stop = s; else s();
+    });
+    getParser().then((fn) => alive && fn && setParser(() => fn));
+    viewerName().then((name) => {
+      const first = name.split(' ')[0];
+      if (alive && people.includes(first)) setMe(first);
+    });
+    return () => { alive = false; stop(); };
   }, []);
+
+  // Ctrl/Cmd+V ergens op het bord (niet in een invoerveld) opent "Taak uit tekst".
+  useEffect(() => {
+    if (!parser) return;
+    const onPaste = (e) => {
+      if (openId || pasteText !== null) return;
+      if (e.target.closest?.('input, textarea, select, [contenteditable]')) return;
+      const text = e.clipboardData?.getData('text') || '';
+      if (text.trim().length > 15) { e.preventDefault(); setPasteText(text); }
+    };
+    document.addEventListener('paste', onPaste);
+    return () => document.removeEventListener('paste', onPaste);
+  }, [parser, openId, pasteText]);
 
   useEffect(() => { try { localStorage.setItem('sommet-me', me); } catch {} }, [me]);
 
@@ -83,13 +108,13 @@ export default function App() {
       ? tasksRef.current.map((t) => (t.id === task.id ? task : t))
       : [...tasksRef.current, task];
     setTasks(all);
-    saveTask(task, all);
+    saveTask(task, all).then(() => setSaveError(''), (e) => setSaveError(writeError(e)));
   }
 
   function remove(id) {
     const all = tasksRef.current.filter((t) => t.id !== id);
     setTasks(all);
-    deleteTask(id, all);
+    deleteTask(id, all).then(() => setSaveError(''), (e) => setSaveError(writeError(e)));
   }
 
   function move(id, status) {
@@ -98,16 +123,22 @@ export default function App() {
     upsert({ ...t, status, history: [...(t.history || []), { status, by: me, at: new Date().toISOString() }] });
   }
 
-  function newTask(status = 'todo') {
+  function newTask(status = 'todo', prefill = null) {
     const now = new Date().toISOString();
-    setOpenId({
-      isNew: true,
-      task: {
-        id: uid('task'), title: '', client: '', workType: '', hours: '', assignees: [me], status,
-        internalDeadline: '', externalDeadline: '', description: '', subtasks: [], comments: [],
-        history: [{ status, by: me, at: now }], createdAt: now,
-      },
-    });
+    const task = {
+      id: uid('task'), title: '', client: '', workType: '', hours: '', assignees: [me], status,
+      internalDeadline: '', externalDeadline: '', description: '', subtasks: [], comments: [],
+      history: [{ status, by: me, at: now }], createdAt: now,
+    };
+    if (prefill) {
+      const { comment, subtasks, assignees, ...rest } = prefill;
+      Object.assign(task, rest);
+      if (assignees.length) task.assignees = assignees;
+      task.subtasks = subtasks.map((text) => ({ id: uid('st'), text, done: false }));
+      if (comment) task.comments = [{ id: uid('c'), author: me, text: comment, at: now }];
+      if (prefill.source) task.source = prefill.source;
+    }
+    setOpenId({ isNew: true, fromText: !!prefill, task });
   }
 
   const visible = useMemo(() => {
@@ -220,10 +251,28 @@ export default function App() {
               {people.map((p) => <option key={p}>{p}</option>)}
             </select>
           </label>
+          {parser && (
+            <button className="btn" onClick={() => setPasteText('')} title="Of plak gewoon ergens op het bord (Ctrl/Cmd+V)">
+              ✨ Taak uit tekst
+            </button>
+          )}
           <button className="btn primary" onClick={() => newTask()}>+ Nieuwe taak</button>
         </header>
-        {loaded && isOffline() && (
+        {status.mode === 'local' && (
           <div className="banner">Geen server bereikbaar: wijzigingen worden alleen in deze browser bewaard.</div>
+        )}
+        {status.stale && !status.error && (
+          <div className="banner">De takenlijst is nog niet bereikbaar. Wat je ziet kan verouderd zijn.</div>
+        )}
+        {status.error && (
+          <div className="banner">De verbinding met de takenlijst is verbroken. Herlaad de pagina om opnieuw te verbinden.</div>
+        )}
+        {saveError && <div className="banner error">{saveError}</div>}
+        {loaded && tasks.length === 0 && (
+          <div className="empty">
+            <h2>Nog geen taken</h2>
+            <p>Maak een taak aan met <strong>+ Nieuwe taak</strong>{parser ? ', of plak een mail of chatbericht op het bord en Claude vult de taak voor je in' : ''}.</p>
+          </div>
         )}
 
         <div className="board">
@@ -263,12 +312,81 @@ export default function App() {
           key={openTask.id}
           task={openTask}
           isNew={!!openId?.isNew}
+          fromText={!!openId?.fromText}
           me={me}
           onClose={() => setOpenId(null)}
           onSave={(t) => { upsert(t); setOpenId(null); }}
           onDelete={() => { remove(openTask.id); setOpenId(null); }}
         />
       )}
+
+      {pasteText !== null && parser && (
+        <PasteDialog
+          initial={pasteText}
+          me={me}
+          parser={parser}
+          onClose={() => setPasteText(null)}
+          onResult={(prefill) => { setPasteText(null); newTask('todo', prefill); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function writeError(e) {
+  if (e?.code === 'invalid_argument' || e?.code === 'not_granted') return 'Je hebt alleen leesrechten op dit bord. Vraag de eigenaar om je als bijdrager toe te voegen.';
+  if (e?.code === 'quota_exceeded') return 'Het bord is vol. Verwijder oude taken om nieuwe toe te voegen.';
+  return 'Opslaan is niet gelukt. Controleer je verbinding en probeer het opnieuw.';
+}
+
+function PasteDialog({ initial, me, parser, onClose, onResult }) {
+  const [text, setText] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && !busy && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [busy, onClose]);
+
+  async function run() {
+    setBusy(true);
+    setError('');
+    try {
+      const prefill = normalize(await parser(buildPrompt(text, me)));
+      if (!prefill.title) throw { code: 'empty' };
+      onResult({ ...prefill, source: text.slice(0, 20000) });
+    } catch (e) {
+      setBusy(false);
+      setError(
+        e?.code === 'not_granted' ? 'Je hebt Claude geen toestemming gegeven. Maak de taak met de hand aan.'
+          : e?.code === 'rate_limited' ? 'Even te veel verzoeken. Probeer het over een minuut opnieuw.'
+          : 'Claude kon hier geen taak van maken. Pas de tekst aan of maak de taak met de hand aan.');
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
+      <div className="modal paste" role="dialog" aria-modal="true">
+        <div className="modal-head">
+          <h2 className="paste-title">Taak uit tekst</h2>
+          <button className="icon-btn" onClick={onClose} disabled={busy} aria-label="Sluiten">✕</button>
+        </div>
+        <div className="paste-body">
+          <p className="muted">Plak een mail, chatbericht of aantekening. Claude haalt er de klant, urensoort, tijdsduur, deadlines en subtaken uit. Je controleert alles voordat de taak wordt aangemaakt.</p>
+          <textarea id="paste-text" rows={12} autoFocus value={text} onChange={(e) => setText(e.target.value)}
+            placeholder={'Hey Pablo,\n\nZou je voor de liner-pagina een configurator willen maken? …'} />
+          {error && <div className="banner error inline">{error}</div>}
+        </div>
+        <div className="modal-foot">
+          <span className="spacer" />
+          <button className="btn" onClick={onClose} disabled={busy}>Annuleren</button>
+          <button className="btn primary" onClick={run} disabled={busy || text.trim().length < 10}>
+            {busy ? 'Claude leest mee…' : 'Maak taak'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -325,7 +443,8 @@ function Card({ task, dragging, onOpen, onDragStart, onDragEnd }) {
   );
 }
 
-function TaskModal({ task, isNew, me, onClose, onSave, onDelete }) {
+function TaskModal({ task, isNew, fromText, me, onClose, onSave, onDelete }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [d, setD] = useState(() => structuredClone(task));
   const [newSub, setNewSub] = useState('');
   const [newComment, setNewComment] = useState('');
@@ -455,6 +574,12 @@ function TaskModal({ task, isNew, me, onClose, onSave, onDelete }) {
               <button className={tab === 'comments' ? 'on' : ''} onClick={() => setTab('comments')}>Opmerkingen ({d.comments.length})</button>
               <button className={tab === 'history' ? 'on' : ''} onClick={() => setTab('history')}>Statuswijzigingen</button>
             </div>
+            {d.source && (
+              <details className="source">
+                <summary>Oorspronkelijke tekst</summary>
+                <pre>{d.source}</pre>
+              </details>
+            )}
             {tab === 'comments' ? (
               <>
                 <form className="comment-form" onSubmit={addComment}>
@@ -489,9 +614,17 @@ function TaskModal({ task, isNew, me, onClose, onSave, onDelete }) {
         </div>
 
         <div className="modal-foot">
-          {!isNew && (
-            <button className="btn danger" onClick={() => { if (confirm('Deze taak verwijderen?')) onDelete(); }}>Verwijderen</button>
+          {!isNew && !confirmDelete && (
+            <button className="btn danger" onClick={() => setConfirmDelete(true)}>Verwijderen</button>
           )}
+          {confirmDelete && (
+            <>
+              <span className="confirm-text">Taak definitief verwijderen?</span>
+              <button className="btn danger solid" onClick={onDelete}>Ja, verwijderen</button>
+              <button className="btn" onClick={() => setConfirmDelete(false)}>Nee</button>
+            </>
+          )}
+          {fromText && <span className="muted">Ingevuld door Claude. Controleer de velden.</span>}
           <span className="spacer" />
           <button className="btn" onClick={onClose}>Annuleren</button>
           <button className="btn primary" disabled={!canSave} onClick={() => onSave(d)}>
