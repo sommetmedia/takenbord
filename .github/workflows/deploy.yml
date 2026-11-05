@@ -6,6 +6,7 @@
 #   CPANEL_USER      cPanel-gebruikersnaam
 #   CPANEL_SSH_KEY   privé SSH-sleutel (de publieke sleutel staat in cPanel > SSH Access)
 #   CPANEL_SSH_PORT  SSH-poort (vaak 22, bij sommige hosts anders)
+#   CPANEL_SSH_PASSPHRASE  wachtwoord van de sleutel (alleen als die er een heeft)
 name: Deploy
 
 on:
@@ -24,9 +25,9 @@ jobs:
       TARGET: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
       READY: ${{ secrets.CPANEL_SSH_KEY != '' && secrets.CPANEL_HOST != '' && secrets.CPANEL_USER != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -38,10 +39,28 @@ jobs:
         if: env.READY != 'true'
         run: echo "::notice::Build gelukt, maar CPANEL_HOST, CPANEL_USER of CPANEL_SSH_KEY ontbreekt nog. Niet gedeployed."
 
-      - uses: webfactory/ssh-agent@v0.9.0
+      - name: SSH-sleutel laden
         if: env.READY == 'true'
-        with:
-          ssh-private-key: ${{ secrets.CPANEL_SSH_KEY }}
+        env:
+          SSH_KEY: ${{ secrets.CPANEL_SSH_KEY }}
+          SSH_PASSPHRASE: ${{ secrets.CPANEL_SSH_PASSPHRASE }}
+        run: |
+          eval "$(ssh-agent -s)" > /dev/null
+          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
+          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> "$GITHUB_ENV"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # Wachtwoord van de sleutel (cPanel dwingt er een af) via askpass, zonder dat het in de log komt.
+          printf '#!/bin/sh\nprintf "%%s\\n" "$SSH_PASSPHRASE"\n' > ~/.ssh/askpass
+          chmod 700 ~/.ssh/askpass
+          ok=true
+          SSH_ASKPASS=~/.ssh/askpass SSH_ASKPASS_REQUIRE=force DISPLAY=:0 timeout 20 ssh-add ~/.ssh/deploy_key < /dev/null || ok=false
+          rm -f ~/.ssh/deploy_key ~/.ssh/askpass
+          if [ "$ok" != true ]; then
+            echo "::error::SSH-sleutel niet geladen. Klopt CPANEL_SSH_PASSPHRASE, en is CPANEL_SSH_KEY de volledige private key?"
+            exit 1
+          fi
 
       - name: Upload naar cPanel en herstart
         if: env.READY == 'true'

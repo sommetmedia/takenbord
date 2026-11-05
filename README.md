@@ -36,7 +36,7 @@ Eenmalig in cPanel, per omgeving (prod en dev):
      (dev: `.../dev`), `APP_ENV` = `production` of `staging`
 3. **SSL/TLS Status**: AutoSSL draaien voor beide subdomeinen.
 4. **SSH Access**: SSH-sleutel aanmaken of importeren en autoriseren, en de privé-sleutel als
-   secret `CPANEL_SSH_KEY` in GitHub zetten (plus `CPANEL_HOST`, `CPANEL_USER`, `CPANEL_SSH_PORT`).
+   secret `CPANEL_SSH_KEY` in GitHub zetten (plus `CPANEL_HOST`, `CPANEL_USER`, `CPANEL_SSH_PORT`). cPanel dwingt een wachtwoord op de sleutel af: zet dat in `CPANEL_SSH_PASSPHRASE`.
 
 De taken staan in `DATA_DIR`, buiten de app-map, zodat een deploy ze nooit overschrijft.
 
