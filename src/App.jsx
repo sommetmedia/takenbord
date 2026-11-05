@@ -7,7 +7,10 @@ import { connect, deleteTask, getMode, getParser, saveTask, viewerName } from '.
 import { buildPrompt, normalize } from './parse.js';
 
 const uid = (p) => `${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
-const emptyFilters = { people: [], client: '', workType: '', internal: [], external: [], duration: [] };
+const emptyFilters = { people: [], client: '', workType: '', internal: [], external: [], duration: [], blocked: false };
+
+// Oude taken met status 'backlog' tellen als vastgelopen in 'Te doen'.
+const normalizeTask = (t) => (t.status === 'backlog' ? { ...t, status: 'todo', blocked: true } : t);
 
 function daysUntil(date) {
   if (!date) return null;
@@ -77,7 +80,7 @@ export default function App() {
   useEffect(() => {
     let stop = () => {};
     let alive = true;
-    connect(seedTasks, (t) => { setTasks(t); setLoaded(true); }, setStatus).then((s) => {
+    connect(seedTasks, (t) => { setTasks(t.map(normalizeTask)); setLoaded(true); }, setStatus).then((s) => {
       if (alive) stop = s; else s();
     });
     getParser().then((fn) => alive && fn && setParser(() => fn));
@@ -144,6 +147,7 @@ export default function App() {
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
     return tasks.filter((t) =>
+      (!filters.blocked || t.blocked) &&
       (!filters.people.length || t.assignees?.some((p) => filters.people.includes(p))) &&
       (!filters.client || t.client === filters.client) &&
       (!filters.workType || t.workType === filters.workType ||
@@ -156,7 +160,7 @@ export default function App() {
 
   const activeFilterCount =
     filters.people.length + filters.internal.length + filters.external.length + filters.duration.length +
-    (filters.client ? 1 : 0) + (filters.workType ? 1 : 0);
+    (filters.client ? 1 : 0) + (filters.workType ? 1 : 0) + (filters.blocked ? 1 : 0);
 
   const toggle = (key, val) =>
     setFilters((f) => ({ ...f, [key]: f[key].includes(val) ? f[key].filter((v) => v !== val) : [...f[key], val] }));
@@ -180,6 +184,14 @@ export default function App() {
             <button className="link" onClick={() => setFilters(emptyFilters)}>Wis ({activeFilterCount})</button>
           )}
         </div>
+
+        <FilterGroup title="Status">
+          <label className="check">
+            <input type="checkbox" checked={filters.blocked} onChange={() => setFilters({ ...filters, blocked: !filters.blocked })} />
+            <span className="blocked-dot" /> Alleen vastgelopen
+            <span className="count">{tasks.filter((t) => t.blocked && t.status !== 'done').length}</span>
+          </label>
+        </FilterGroup>
 
         <FilterGroup title="Personen">
           {people.map((p) => (
@@ -413,7 +425,7 @@ function Card({ task, dragging, onOpen, onDragStart, onDragEnd }) {
   const group = workGroup(task.workType);
   return (
     <article
-      className={`card ${dragging ? 'dragging' : ''}`}
+      className={`card ${dragging ? 'dragging' : ''} ${task.blocked ? 'is-blocked' : ''}`}
       draggable
       onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; onDragStart(); }}
       onDragEnd={onDragEnd}
@@ -421,6 +433,7 @@ function Card({ task, dragging, onOpen, onDragStart, onDragEnd }) {
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && onOpen()}
     >
+      {task.blocked && <div className="blocked-badge" title={task.blockedReason || ''}>⛔ Vastgelopen{task.blockedReason ? `: ${task.blockedReason}` : ''}</div>}
       {task.client && <div className="card-client">{task.client}</div>}
       <h3 className="card-title">{task.title || 'Naamloze taak'}</h3>
       {task.workType && <span className={`chip type type-${group}`}>{task.workType}</span>}
@@ -522,6 +535,22 @@ function TaskModal({ task, isNew, fromText, me, onClose, onSave, onDelete }) {
               </Field>
             </div>
 
+            <div className={`blocked-box ${d.blocked ? 'on' : ''}`}>
+              <label className="check">
+                <input type="checkbox" checked={!!d.blocked} onChange={() => {
+                  const blocked = !d.blocked;
+                  set({ blocked, blockedReason: blocked ? d.blockedReason || '' : '',
+                    history: [...d.history, { status: d.status, event: blocked ? 'blocked' : 'unblocked', by: me, at: new Date().toISOString() }] });
+                }} />
+                <strong>Vastgelopen</strong>
+                <span className="muted">De taak kan niet verder, bijvoorbeeld omdat we wachten op de klant.</span>
+              </label>
+              {d.blocked && (
+                <input id="blocked-reason" placeholder="Waarop wachten we? (bijv. content van de klant)" value={d.blockedReason || ''}
+                  onChange={(e) => set({ blockedReason: e.target.value })} />
+              )}
+            </div>
+
             <Field label="Toegewezen aan" group>
               <div className="people-pick">
                 {people.map((p) => {
@@ -601,9 +630,13 @@ function TaskModal({ task, isNew, fromText, me, onClose, onSave, onDelete }) {
               <ul className="timeline">
                 {[...d.history].reverse().map((h, i) => (
                   <li key={i}>
-                    <span className={`tl-dot st-${h.status}`} />
+                    <span className={`tl-dot st-${h.event || h.status}`} />
                     <div>
-                      <div>{i === d.history.length - 1 ? 'Aangemaakt in' : 'Verplaatst naar'} <strong>{statusTitle[h.status]}</strong></div>
+                      <div>
+                        {h.event === 'blocked' ? <>Gemarkeerd als <strong>vastgelopen</strong></>
+                          : h.event === 'unblocked' ? <>Weer <strong>vlotgetrokken</strong></>
+                          : <>{i === d.history.length - 1 ? 'Aangemaakt in' : 'Verplaatst naar'} <strong>{statusTitle[h.status] || h.status}</strong></>}
+                      </div>
                       <div className="muted">{h.by} · {fmtStamp(h.at)}</div>
                     </div>
                   </li>

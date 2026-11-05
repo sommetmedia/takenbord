@@ -5,14 +5,13 @@ export { workTypes };
 export const people = ['Pablo', 'Kevin', 'Koen', 'Yade', 'Richelle'];
 
 export const columns = [
-  { id: 'backlog', title: 'Backlog' },
   { id: 'todo', title: 'Te doen' },
   { id: 'doing', title: 'Mee bezig' },
   { id: 'review', title: 'Review' },
   { id: 'done', title: 'Klaar' },
 ];
 
-export const statusTitle = Object.fromEntries(columns.map((c) => [c.id, c.title]));
+export const statusTitle = { ...Object.fromEntries(columns.map((c) => [c.id, c.title])), backlog: 'Backlog' };
 
 // De 30 projecten uit Simplicate.
 export const clients = [
