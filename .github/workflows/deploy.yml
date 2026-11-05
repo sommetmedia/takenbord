@@ -22,6 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TARGET: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
+      READY: ${{ secrets.CPANEL_SSH_KEY != '' && secrets.CPANEL_HOST != '' && secrets.CPANEL_USER != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -33,11 +34,17 @@ jobs:
       - run: npm ci
       - run: npm run package
 
+      - name: Nog geen server-gegevens
+        if: env.READY != 'true'
+        run: echo "::notice::Build gelukt, maar CPANEL_HOST, CPANEL_USER of CPANEL_SSH_KEY ontbreekt nog. Niet gedeployed."
+
       - uses: webfactory/ssh-agent@v0.9.0
+        if: env.READY == 'true'
         with:
           ssh-private-key: ${{ secrets.CPANEL_SSH_KEY }}
 
       - name: Upload naar cPanel en herstart
+        if: env.READY == 'true'
         env:
           HOST: ${{ secrets.CPANEL_HOST }}
           USER: ${{ secrets.CPANEL_USER }}
