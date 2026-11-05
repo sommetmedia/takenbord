@@ -366,7 +366,7 @@ function PasteDialog({ initial, me, parser, onClose, onResult }) {
     setBusy(true);
     setError('');
     try {
-      const prefill = normalize(await parser(buildPrompt(text, me)));
+      const prefill = normalize(await parser(buildPrompt(text, me)), text);
       if (!prefill.title) throw { code: 'empty' };
       onResult({ ...prefill, source: text.slice(0, 20000) });
     } catch (e) {
@@ -657,7 +657,13 @@ function TaskModal({ task, isNew, fromText, me, onClose, onSave, onDelete }) {
               <button className="btn" onClick={() => setConfirmDelete(false)}>Nee</button>
             </>
           )}
-          {fromText && <span className="muted">Ingevuld door Claude. Controleer de velden.</span>}
+          {fromText && (
+            <span className="muted">
+              Ingevuld door Claude. Controleer de velden.
+              {[!d.client && 'klant', !d.internalDeadline && !d.externalDeadline && 'deadline'].filter(Boolean).length > 0 &&
+                ` Niet in de tekst gevonden: ${[!d.client && 'klant', !d.internalDeadline && !d.externalDeadline && 'deadline'].filter(Boolean).join(' en ')}.`}
+            </span>
+          )}
           <span className="spacer" />
           <button className="btn" onClick={onClose}>Annuleren</button>
           <button className="btn primary" disabled={!canSave} onClick={() => onSave(d)}>
