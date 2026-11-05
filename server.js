@@ -5,12 +5,12 @@ import express from 'express';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { seedTasks } from './src/seed.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Map van de app. Lokaal en op cPanel (Passenger) is dat de werkmap.
+const ROOT = process.env.APP_ROOT || process.cwd();
 const PORT = process.env.PORT || 3001;
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'tasks.json');
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -76,7 +76,7 @@ app.delete('/api/tasks/:id', (req, res) => {
 });
 
 if (process.env.NODE_ENV === 'production') {
-  const dist = path.join(__dirname, 'dist');
+  const dist = path.join(ROOT, 'dist');
   app.use(express.static(dist));
   app.get('*', (_req, res) => res.sendFile(path.join(dist, 'index.html')));
 }

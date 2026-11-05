@@ -1,7 +1,0 @@
-# Voorbeeld reverse proxy met automatische HTTPS (Caddy). Bij Plesk/nginx: zelfde idee, proxy naar de poort.
-tasks.sommetmedia.nl {
-	reverse_proxy 127.0.0.1:3001
-}
-tasks-dev.sommetmedia.nl {
-	reverse_proxy 127.0.0.1:3002
-}

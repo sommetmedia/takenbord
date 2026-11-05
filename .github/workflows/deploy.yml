@@ -1,5 +1,11 @@
-# Elke push naar `dev` gaat naar tasks-dev.sommetmedia.nl, elke push naar `main` naar tasks.sommetmedia.nl.
-# Nodig in GitHub > Settings > Secrets and variables > Actions: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY.
+# Push naar `dev`  -> tasks-dev.sommetmedia.nl  (map ~/takenbord/dev  op de cPanel-server)
+# Push naar `main` -> tasks.sommetmedia.nl      (map ~/takenbord/prod op de cPanel-server)
+#
+# Secrets (GitHub > Settings > Secrets and variables > Actions):
+#   CPANEL_HOST      45.152.249.10
+#   CPANEL_USER      cPanel-gebruikersnaam
+#   CPANEL_SSH_KEY   privé SSH-sleutel (de publieke sleutel staat in cPanel > SSH Access)
+#   CPANEL_SSH_PORT  SSH-poort (vaak 22, bij sommige hosts anders)
 name: Deploy
 
 on:
@@ -14,7 +20,8 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    env:
+      TARGET: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -22,17 +29,20 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: npm run build
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.2.0
-        env:
-          BRANCH: ${{ github.ref_name }}
-          SHA: ${{ github.sha }}
+      - run: npm ci
+      - run: npm run package
+
+      - uses: webfactory/ssh-agent@v0.9.0
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: BRANCH,SHA
-          script: bash ~/sommet-kanban-deploy.sh "$BRANCH" "$SHA"
+          ssh-private-key: ${{ secrets.CPANEL_SSH_KEY }}
+
+      - name: Upload naar cPanel en herstart
+        env:
+          HOST: ${{ secrets.CPANEL_HOST }}
+          USER: ${{ secrets.CPANEL_USER }}
+          PORT: ${{ secrets.CPANEL_SSH_PORT || '22' }}
+        run: |
+          ssh-keyscan -p "$PORT" "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          rsync -az --delete --exclude tmp/ --exclude .htaccess -e "ssh -p $PORT" build/ "$USER@$HOST:takenbord/$TARGET/"
+          ssh -p "$PORT" "$USER@$HOST" "mkdir -p takenbord/$TARGET/tmp && touch takenbord/$TARGET/tmp/restart.txt"
