@@ -8,6 +8,7 @@ import {
   connect, deleteTask, getMode, getParser, login, logout, saveSettings, saveTask, session, viewerName,
 } from './api.js';
 import { buildPrompt, normalize } from './parse.js';
+import logoUrl from './logo.png';
 
 const uid = (p) => `${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 const emptyFilters = { people: [], client: '', workType: '', internal: [], external: [], duration: [], blocked: false };
@@ -107,7 +108,7 @@ function Login({ onDone }) {
   return (
     <div className="login-page">
       <form className="login-card" onSubmit={submit}>
-        <div className="login-brand"><span className="logo-dot" /> Sommet Media</div>
+        <div className="login-brand"><img className="login-logo" src={logoUrl} alt="" /> Sommet Media</div>
         <h1>Takenbord</h1>
         <p className="muted">Log in met je e-mailadres van Sommet Media.</p>
         <label className="field">
@@ -242,7 +243,7 @@ function Board({ user, onLogout, onSettingsSaved }) {
     <div className="app">
       <aside className={`sidebar ${menuOpen ? 'open' : ''}`}>
         <div className="brand">
-          <span className="brand-mark">S</span>
+          <img className="brand-mark" src={logoUrl} alt="" />
           <div>
             <div className="brand-name">Sommet Media</div>
             <div className="brand-sub">Takenbord</div>

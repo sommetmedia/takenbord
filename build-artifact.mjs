@@ -6,7 +6,7 @@ import fs from 'node:fs';
 const out = await build({
   plugins: [react()],
   logLevel: 'warn',
-  build: { write: false, cssCodeSplit: false, modulePreload: false },
+  build: { write: false, cssCodeSplit: false, modulePreload: false, assetsInlineLimit: 100000 },
 });
 const files = (Array.isArray(out) ? out[0] : out).output;
 const js = files.filter((f) => f.type === 'chunk').map((f) => f.code).join('\n').replaceAll('</script', '<\\/script');

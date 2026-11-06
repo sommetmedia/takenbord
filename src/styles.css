@@ -57,10 +57,7 @@ input[type='checkbox'] { width: 16px; height: 16px; padding: 0; accent-color: va
   overflow-y: auto;
 }
 .brand { display: flex; align-items: center; gap: 10px; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
-.brand-mark {
-  width: 38px; height: 38px; border-radius: 10px; background: var(--orange); color: #fff;
-  display: grid; place-items: center; font: 800 20px 'Montserrat', sans-serif;
-}
+.brand-mark { width: 40px; height: 40px; flex: none; display: block; }
 .brand-name { font-weight: 800; font-size: 16px; }
 .brand-sub { color: var(--muted); font-size: 12px; }
 .filters-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
@@ -257,7 +254,7 @@ input[type='checkbox'] { width: 16px; height: 16px; padding: 0; accent-color: va
 .login-card h1 { margin: 4px 0 6px; font-size: 26px; color: var(--ink); }
 .login-card .muted { margin: 0 0 20px; }
 .login-brand { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--orange); font-size: 13px; letter-spacing: .02em; text-transform: uppercase; }
-.logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--orange); }
+.login-logo { width: 28px; height: 28px; display: block; }
 .login-btn { width: 100%; margin-top: 8px; padding: 10px; }
 .btn.small { padding: 5px 10px; font-size: 12px; }
 .btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
