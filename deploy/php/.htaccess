@@ -16,6 +16,8 @@ DirectoryIndex index.html
 </IfModule>
 
 <IfModule mod_headers.c>
+  # Intern bord: niet in zoekmachines. Geldt voor alles (pagina, bestanden en API).
+  Header always set X-Robots-Tag "noindex, nofollow"
   <FilesMatch "\.html$">
     Header set Cache-Control "no-cache"
   </FilesMatch>

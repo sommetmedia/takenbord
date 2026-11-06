@@ -16,6 +16,7 @@
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
+header('X-Robots-Tag: noindex, nofollow');
 
 $appDir  = getenv('TAKENBORD_APP_DIR') ?: dirname(__DIR__);
 $env     = getenv('TAKENBORD_ENV') ?: basename($appDir);
